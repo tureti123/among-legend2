@@ -454,7 +454,7 @@ etiq1.innerHTML='le plus de morts'
     parametre.appendChild(deroule1)
    
     //modifiable
-for (let head=0;head<2;head++){
+for (let head=0;head<5;head++){
     console.log(hequipe)
     let ahead=document.createElement('th')
             ahead.id=`${head}`
@@ -482,7 +482,7 @@ for (let head=0;head<2;head++){
             row.appendChild(dline)
             dline.innerHTML=identityu[r]
             //modifiable
-        for (let id=0;id<2;id++){
+        for (let id=0;id<5;id++){
             let line= document.createElement('td')
             let checkbox=document.createElement('input')
             checkbox.id=`${r}${id}` 
@@ -504,7 +504,7 @@ for (let head=0;head<2;head++){
  async function acri(h){
     document.getElementById('validation').innerHTML=""
     //modifiable
-    for (let p=0;p<2;p++){
+    for (let p=0;p<5;p++){
         for (let r=0;r<6;r++){
             
             let acro=document.getElementById(`${r}${p}`)
