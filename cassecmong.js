@@ -1,7 +1,7 @@
 
 import mongodb from 'mongodb';
 const { MongoClient } = mongodb;
-const url = 'mongodb+srv://tureti:db7dm8mf@cluster0.tvkiecu.mongodb.net/';
+const url = 'process.env.MONGO_URI;/';
 const client = new MongoClient(url);
 await client.connect();
 const database = client.db('votreBaseDeDonnées');
