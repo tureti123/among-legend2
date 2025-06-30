@@ -104,7 +104,7 @@ io.on('connection', (socket) => {
        
         let mace = await collec.countDocuments({ 'team':`T${h}` });
 //modifiable mace< 5 ||reco==="reco"
-        if (mace< 2 ||reco==="reco") {
+        if (mace< 5 ||reco==="reco") {
             t12(socket, h);
         }
         infosave(socket.pseudo, 'team', `T${h}`);
@@ -114,7 +114,7 @@ io.on('connection', (socket) => {
         let roomSize = await collec.countDocuments({ 'team':`T${four}` });
        
 //modifiable roomSize<5 || reco==="reco"
-        if (roomSize<2 || reco==="reco"){
+        if (roomSize<5 || reco==="reco"){
             socket.emit('val2', true);
         }
         else{
@@ -127,7 +127,7 @@ io.on('connection', (socket) => {
         let T1 = await collec.countDocuments({ 'team':`T1` });
         let T0 = await collec.countDocuments({ 'team':`T0` });
         //modifiable T1 === 5 && T0===5
-        if (T1 === 2 && T0===2) {
+        if (T1 === 5 && T0===5) {
             socket.emit('enough', true);
         }
     });
