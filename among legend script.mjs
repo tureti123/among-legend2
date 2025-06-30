@@ -170,7 +170,7 @@ io.on('connection', (socket) => {
         ;//['imposteur'] ,'serpentin', 'romeo','superhero'
         //pour les deux teams
         for (let b = 0; b < 2; b++) {
-            let identity = ['doubleface','droide' ];
+            let identity = ['doubleface','droide','serpentin', 'romeo','superhero' ];
             let ni = ['imposteur']
             let k = 0;
             //modifiable
