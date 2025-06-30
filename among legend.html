@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8"/>
+    <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+    <title>Among Legend - Chat en temps réel</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #0f0f23 0%, #1a1a3a 50%, #2d1b69 100%);
+            min-height: 100vh;
+            color: #fff;
+            overflow-x: hidden;
+        }
+
+        .background-animation {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: -1;
+            background: 
+                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+                radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.15) 0%, transparent 50%),
+                radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.1) 0%, transparent 50%);
+        }
+
+        .star {
+            position: absolute;
+            width: 2px;
+            height: 2px;
+            background: white;
+            border-radius: 50%;
+            animation: twinkle 3s infinite;
+        }
+
+        @keyframes twinkle {
+            0%, 100% { opacity: 0; }
+            50% { opacity: 1; }
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            position: relative;
+            z-index: 1;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+            animation: fadeInDown 1s ease-out;
+        }
+
+        .logo {
+            font-size: 3rem;
+            font-weight: bold;
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4, #45b7d1, #f093fb);
+            background-size: 400% 400%;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            animation: gradientShift 4s ease-in-out infinite;
+            text-shadow: 0 0 30px rgba(255, 255, 255, 0.5);
+            filter: drop-shadow(0 0 10px rgba(255, 107, 107, 0.3));
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        @keyframes fadeInDown {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.08);
+            backdrop-filter: blur(15px);
+            border-radius: 20px;
+            padding: 25px;
+            margin: 20px 0;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.3),
+                inset 0 1px 0 rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            animation: fadeInUp 0.8s ease-out;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
+            transition: left 0.8s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-3px);
+            box-shadow: 
+                0 15px 40px rgba(0, 0, 0, 0.4),
+                inset 0 1px 0 rgba(255, 255, 255, 0.2);
+            border-color: rgba(255, 255, 255, 0.25);
+        }
+
+        .card:hover::before {
+            left: 100%;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* Styles améliorés pour les équipes */
+        .teams-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin: 30px 0;
+        }
+
+        .team-card {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 20px;
+            padding: 25px;
+            text-align: center;
+            transition: all 0.4s ease;
+            border: 2px solid transparent;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .team-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            border-radius: 18px;
+            padding: 2px;
+            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            mask-composite: exclude;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .team-card:hover::before {
+            opacity: 1;
+        }
+
+        .team-card.team1 {
+            border-color: rgba(255, 107, 107, 0.4);
+            box-shadow: 0 0 20px rgba(255, 107, 107, 0.1);
+        }
+
+        .team-card.team1:hover {
+            border-color: rgba(255, 107, 107, 0.6);
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.2);
+        }
+
+        .team-card.team2 {
+            border-color: rgba(78, 205, 196, 0.4);
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.1);
+        }
+
+        .team-card.team2:hover {
+            border-color: rgba(78, 205, 196, 0.6);
+            box-shadow: 0 0 30px rgba(78, 205, 196, 0.2);
+        }
+
+        .team-card:hover {
+            transform: scale(1.02) translateY(-5px);
+        }
+
+        .team-title {
+            font-size: 1.5rem;
+            margin-bottom: 20px;
+            font-weight: bold;
+            filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.3));
+        }
+
+        .team1 .team-title {
+            color: #ff6b6b;
+            text-shadow: 0 0 10px rgba(255, 107, 107, 0.5);
+        }
+
+        .team2 .team-title {
+            color: #4ecdc4;
+            text-shadow: 0 0 10px rgba(78, 205, 196, 0.5);
+        }
+
+        /* Tables améliorées */
+        .team-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+            margin-top: 15px;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .team-table th, .team-table td {
+            padding: 12px 15px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .team-table th {
+            background: rgba(255, 255, 255, 0.15);
+            font-weight: bold;
+            color: #fff;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        .team-table td {
+            background: rgba(255, 255, 255, 0.05);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .team-table tr:hover td {
+            background: rgba(255, 255, 255, 0.1);
+            transform: scale(1.02);
+        }
+
+        /* Styles pour les cases/checkboxes améliorées */
+        input[type="checkbox"] {
+            appearance: none;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 6px;
+            background: rgba(255, 255, 255, 0.1);
+            cursor: pointer;
+            position: relative;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(5px);
+        }
+
+        input[type="checkbox"]:hover {
+            border-color: rgba(255, 255, 255, 0.5);
+            background: rgba(255, 255, 255, 0.15);
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255, 255, 255, 0.2);
+        }
+
+        input[type="checkbox"]:checked {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border-color: #4ecdc4;
+            box-shadow: 
+                0 0 20px rgba(78, 205, 196, 0.4),
+                inset 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-weight: bold;
+            font-size: 14px;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+        }
+
+        /* Table d'assignation des rôles */
+        #assignmentSection {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #dab {
+            background: rgba(255, 255, 255, 0.03);
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        #dab th {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.3), rgba(78, 205, 196, 0.3));
+            color: white;
+            font-size: 1.1rem;
+            padding: 15px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
+
+        #dab td {
+            padding: 15px;
+            background: rgba(255, 255, 255, 0.02);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s ease;
+        }
+
+        #dab tr:hover td {
+            background: rgba(255, 255, 255, 0.08);
+        }
+
+        /* Cases de rôles avec couleurs spécifiques */
+        #dab tr:nth-child(1) td:first-child { /* Imposteur */
+            color: #ff4757;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
+        }
+
+        #dab tr:nth-child(2) td:first-child { /* Serpentin */
+            color: #2ed573;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(46, 213, 115, 0.3);
+        }
+
+        #dab tr:nth-child(3) td:first-child { /* Superhero */
+            color: #ffa502;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 165, 2, 0.3);
+        }
+
+        #dab tr:nth-child(4) td:first-child { /* Doubleface */
+            color: #a55eea;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(165, 94, 234, 0.3);
+        }
+
+        #dab tr:nth-child(5) td:first-child { /* Romeo */
+            color: #ff6b9d;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(255, 107, 157, 0.3);
+        }
+
+        #dab tr:nth-child(6) td:first-child { /* Droide */
+            color: #74b9ff;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(116, 185, 255, 0.3);
+        }
+
+        /* Autres éléments */
+        .pseudo-section {
+            text-align: center;
+        }
+
+        .input-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        input[type="text"], input[type="range"], select {
+            background: rgba(255, 255, 255, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 12px 20px;
+            color: white;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+        }
+
+        input[type="text"]:focus, select:focus {
+            outline: none;
+            border-color: #4ecdc4;
+            box-shadow: 0 0 20px rgba(78, 205, 196, 0.3);
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        input[type="text"]::placeholder {
+            color: rgba(255, 255, 255, 0.6);
+        }
+
+        select option {
+            background: #1a1a3a;
+            color: white;
+        }
+
+        .btn {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            border: none;
+            border-radius: 12px;
+            padding: 12px 25px;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .btn::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+            transition: left 0.5s;
+        }
+
+        .btn:hover::before {
+            left: 100%;
+        }
+
+        /* Paramètres section */
+        #parametre {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: center;
+            margin-top: 20px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        #parametre label {
+            font-weight: bold;
+            color: #4ecdc4;
+            text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Validation section */
+        #validation {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        /* Status bar */
+        .status-bar {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+        }
+
+        .status-bar > div {
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 10px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        /* Role description */
+        #roleDescription {
+            background: linear-gradient(135deg, rgba(255, 107, 107, 0.1), rgba(78, 205, 196, 0.1));
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        /* Orders section */
+        .orders-section {
+            background: rgba(255, 107, 107, 0.1);
+            border: 2px solid rgba(255, 107, 107, 0.3);
+            border-radius: 15px;
+            padding: 20px;
+            margin: 20px 0;
+            backdrop-filter: blur(10px);
+        }
+
+        /* Audio controls */
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Game controls */
+        .game-controls {
+            display: flex;
+            justify-content: center;
+            gap: 20px;
+            flex-wrap: wrap;
+            margin: 30px 0;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .teams-section {
+                grid-template-columns: 1fr;
+            }
+            
+            .logo {
+                font-size: 2rem;
+            }
+            
+            .input-group {
+                flex-direction: column;
+            }
+
+            #parametre {
+                flex-direction: column;
+            }
+        }
+
+        /* Animations */
+        .pulse {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .loading {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        /* Notification */
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(78, 205, 196, 0.9);
+            color: white;
+            padding: 15px 20px;
+            border-radius: 10px;
+            backdrop-filter: blur(10px);
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            z-index: 1001;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        /* Modal */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 500px;
+            width: 90%;
+            text-align: center;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body>
+         <script src="/socket.io/socket.io.js"></script>
+     <script>
+        const socket = io();
+    </script>
+    <div class="background-animation" id="stars"></div>
+    <div class="container">
+        <header class="header">
+            <h1 class="logo">AMONG LEGEND</h1>
+            <p style="font-size: 1.2rem; opacity: 0.8; margin-top: 10px;">Jeu multijoueur en temps réel</p>
+        </header>
+
+        <!-- Section Pseudo -->
+        <div class="card pseudo-section" id="pseudoSection">
+            <h2 style="margin-bottom: 20px;">🎮 Choisir un pseudo</h2>
+            <div class="input-group">
+                <input id="salam" maxlength="20" placeholder="Entrez votre pseudo..." type="text"/>
+                <button class="btn" onclick="demarcher()">
+                    <span id="joinText">Rejoindre</span>
+                    <div class="loading hidden" id="joinLoading"></div>
+                </button>
+            </div>
+        </div>
+
+        <!-- Section Teams -->
+        <div class="teams-section">
+            <div class="card team-card team1">
+                <h3 class="team-title">🔴 ÉQUIPE 1</h3>
+                <button class="btn" onclick="Tù(1,'a')" style="margin-bottom: 15px;">Rejoindre T1</button>
+                <table class="team-table" id="sktt1">
+                    <thead>
+                        <tr><th>Joueurs T1</th></tr>
+                    </thead>
+                    <tbody id="T1"></tbody>
+                </table>
+            </div>
+            <div class="card team-card team2">
+                <h3 class="team-title">🔵 ÉQUIPE 2</h3>
+                <button class="btn" onclick="Tù(0,'b')" style="margin-bottom: 15px;">Rejoindre T2</button>
+                <table class="team-table" id="sktt0">
+                    <thead>
+                        <tr><th>Joueurs T2</th></tr>
+                    </thead>
+                    <tbody id="T0"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- Status Bar -->
+        <div class="status-bar">
+            <div>
+                <strong>🎭 Rôle:</strong> <span id="role">En attente...</span>
+            </div>
+            <div>
+                <strong>⏱️ Statut:</strong> <span id="gameStatus">En préparation</span>
+            </div>
+        </div>
+
+        <!-- Role Description -->
+        <div class="card" id="roleDescription">
+            <h3>📋 Description du rôle</h3>
+            <div id="enroler" style="margin-top: 15px; font-size: 1.1rem; line-height: 1.6;">
+                Attendez l'attribution de votre rôle...
+            </div>
+        </div>
+
+        <!-- Orders Section -->
+        <div class="orders-section" id="ordersSection">
+            <h3>📢 Ordres reçus</h3>
+            <div id="listordre" style="margin-top: 15px; font-size: 1.1rem;">
+                Aucun ordre pour le moment...
+            </div>
+        </div>
+
+        <!-- Audio Controls -->
+        <div class="card">
+            <h3 style="margin-bottom: 20px;">🔊 Contrôles Audio</h3>
+            <div class="audio-controls">
+                <button class="btn" id="controle" onclick="audiotest()">▶️ Démarrer</button>
+                <div class="volume-control">
+                    <span>🔉</span>
+                    <input id="volumecontrol" max="1" min="0" step="0.1" type="range" value="0.5"/>
+ <audio id="audiotest" style="display: none;"  name="audible">
+<source src="rick-astley-never-gonna-give-you-up.mp3" type="audio/mp3"/>
+</audio>
+                    <span>🔊</span>
+                </div>
+                <button class="btn" onclick="droideaudio()">🎮 Mode Jeu</button>
+            </div>
+        </div>
+
+        <!-- Game Controls -->
+        <div class="game-controls">
+            <div id="lancerlapartie">
+                <button class="btn pulse" onclick="lancer()" style="font-size: 1.2rem; padding: 15px 30px;">
+                    🚀 LANCER LA PARTIE
+                </button>
+            </div>
+            <button class="btn" id="gomme" onclick="gagnant()">🏆 Équipe Gagnante</button>
+            <button class="btn" onclick="hello()" style="background: linear-gradient(45deg, #ff4757, #ff3742);">
+                🔄 Reset
+            </button>
+        </div>
+
+        <!-- Results Section -->
+        <div class="card" id="resultsSection">
+            <h3>🏆 Classement</h3>
+            <div id="class" style="margin-top: 20px;"></div>
+        </div>
+
+        <!-- Role Assignment Table -->
+        <div class="card" id="assignmentSection">
+            <h3>⚙️ Attribution des Rôles</h3>
+            <div id="validation"  style="margin: 20px 0;"></div>
+            <table class="team-table" id="dab">
+                <thead>
+                    <tr id="gen"><th>Rôles</th></tr>
+                </thead>
+                <tbody id="ayaya"></tbody>
+            </table>
+            <div id="parametre" style="margin-top: 20px;"></div>
+        </div>
+
+        <!-- Hidden Elements -->
+        <div class="hidden" id="imposteur"></div>
+        <div class="hidden" id="serpentin"></div>
+        <div class="hidden" id="test3"><tbody></tbody></div>
+    </div>
+
+    <!-- Audio Elements -->
+    <audio id="audioPlayer0" style="display: none;" name="audible">
+        <source src="Tuturu_sound_effect.mp3" type="audio/mp3"/>
+    </audio>
+    <audio id="audioPlayer" style="display: none;" name="audible">
+        <source id="audio" src="" type="audio/mp3"/>
+    </audio>
+
+
+    <!-- Notification Container -->
+    <div class="notification" id="notification"></div>
+
+    <!-- Modal -->
+    <div class="modal" id="modal">
+        <div class="modal-content">
+            <h3 id="modalTitle">Titre</h3>
+            <p id="modalText">Contenu du modal</p>
+            <button class="btn" onclick="closeModal()">Fermer</button>
+        </div>
+    </div>
+<!-- À la fin du <body> -->
+    <script src="/socket.io/socket.io.js"></script>
+<script src="amongjs.js"></script>
+
+
+    <div id="gagnant">
+        <button id="gomme" onclick="gagnant()">team gagnant</button>
+</div></body></html>
+
+    <!-- Scripts (remplacez par vos vrais scripts) -->
+   

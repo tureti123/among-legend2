@@ -1,20 +1,22 @@
-
 import express from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { dirname } from 'path';
 import { fileURLToPath } from 'url';
 import mongodb from 'mongodb';
-import { setInterval } from 'timers/promises';
+import path from 'path'
 import { readdir } from 'fs';
 import { promisify } from 'util';
+import dotenv from 'dotenv'
+dotenv.config()
 const { MongoClient } = mongodb;
 
 let count=0
 let user = {};
-
+let winner
 let identityup=['imposteur','serpentin','superhero','doubleface','roméo','droide']
-
+let decouvert0=0
+let decouvert1=0
 global.T1 = []
 global.T0 = []
 
@@ -37,7 +39,8 @@ const server = createServer(app);
 const io = new Server(server);
 
 // Servir les fichiers statiques de l'application (y compris index.html)
-app.use(express.static(__dirname));
+app.use(express.static(path.join(__dirname)));
+app.use('/ordre', express.static(path.join(__dirname, '/ordre')));
 
 // Définir une route pour servir la page d'accueil
 app.get('/', (req, res) => {
@@ -59,6 +62,7 @@ io.on('connection', (socket) => {
     socket.point=0
     socket.imparti=0
     socket.IDroide=''
+    socket.decouvert=0
 
     socket.on('disconnect', () => {});
 
@@ -71,7 +75,7 @@ io.on('connection', (socket) => {
     socket.on('pseudo', async (n) => {
       
         socket.pseudo = n;
-        user[socket.id] = n;
+      //  user[socket.id] = n;
        
            if (lunch === true) {
            soitajour(socket)
@@ -91,15 +95,15 @@ io.on('connection', (socket) => {
         
     });
 
-    socket.on('ve', () => {
+    /*socket.on('ve', () => {
         let ndpe = Object.keys(user).length;
         socket.emit('val', ndpe < 10);
-    });
+    });*/
 
     socket.on('t12', async (h,reco) => {
        
         let mace = await collec.countDocuments({ 'team':`T${h}` });
-
+//modifiable mace< 5 ||reco==="reco"
         if (mace< 2 ||reco==="reco") {
             t12(socket, h);
         }
@@ -109,7 +113,7 @@ io.on('connection', (socket) => {
     socket.on('vt',async (four,reco) => {
         let roomSize = await collec.countDocuments({ 'team':`T${four}` });
        
-
+//modifiable roomSize<5 || reco==="reco"
         if (roomSize<2 || reco==="reco"){
             socket.emit('val2', true);
         }
@@ -122,6 +126,7 @@ io.on('connection', (socket) => {
     socket.on('nb',async () => {
         let T1 = await collec.countDocuments({ 'team':`T1` });
         let T0 = await collec.countDocuments({ 'team':`T0` });
+        //modifiable T1 === 5 && T0===5
         if (T1 === 2 && T0===2) {
             socket.emit('enough', true);
         }
@@ -160,36 +165,42 @@ io.on('connection', (socket) => {
     });
 
     socket.on('giverole',async (t) => {
-       
+
         lunch = t;
-        let ni = [];
-        let identity = ['droide', 'doubleface'];
-        
+        ;//['imposteur'] ,'serpentin', 'romeo','superhero'
+        //pour les deux teams
         for (let b = 0; b < 2; b++) {
-            let i = 2;
+            let identity = ['doubleface','droide' ];
+            let ni = ['imposteur']
             let k = 0;
-            while (identity.length !== 0) {
-                let choix = Math.floor(Math.random() * identity.length);
+            //modifiable
+            for(let m=0;m<2;m++) {
+                let choix = Math.floor((Math.random() * identity.length)-0,1);
                 let nv = identity.splice(choix, 1);
                 ni.push(nv[0]);
-                i--;
             }
             
             global[`T${b}`]=await collec.find({'team':`T${b}`}).toArray()
             let idt=global[`T${b}`].map(dpc=>dpc.id)
            
-           
-
-            for (const userid of idt){
-                infosaveid(userid, 'role', ni[k]);
-                infosaveid(userid,'point',0)
-                infosaveid(userid,'ordre',[])
-                
-                if (k !== 2 && userid !== socket.id) {
-                    socket.to(userid).emit('message', ni[k],b);
+            for (const userid in idt){
+                infosaveid(idt[userid], 'role', ni[k]);
+                infosaveid(idt[userid],'point',0)
+                infosaveid(idt[userid],'ordre',[])
+                infosaveid(idt[userid],'position',userid)
+                if(ni[k]==='imposteur'){
+                    infosaveid(idt[userid],'decouvert',0)
+                }
+               
+                //modifiable
+                if (k !== 2 && idt[userid] !== socket.id) {
+                    socket.to(idt[userid]).emit('message', ni[k],b);
+                    socket.to(idt[userid]).emit(ni[k])
                     
-                } else {
+                }
+                 else {
                     socket.emit('message', ni[k],b);
+                    socket.emit(ni[k])
                 }
                 //global[ni[k]].add(userid);
                 
@@ -214,7 +225,7 @@ io.on('connection', (socket) => {
     socket.on('disconnecting2', (l1, l0) => {
         infosave('biencommun1', 'table', l1);
         infosave('biencommun0', 'table', l0);
-        console.log('salam')
+       
         io.emit('maj', l1, l0);
     });
 
@@ -239,36 +250,115 @@ io.on('connection', (socket) => {
     
         socket.emit('gh',global[`T${h}`])
     })
+
     socket.on("elu",async(p,id,h)=>{
-        
-    
      
         let attribution= await collec.findOne({ id:global[`T${h}`][p].id});
-        
 
+        
         if (attribution.role===identityup[id]){
-          
-            socket.point+=1
-            infosave(socket.pseudo,'point',socket.point)
+            inc(socket.pseudo,1)
+            if(socket.pseudo!==attribution.pseudo){
+
+                if(attribution.role==='imposteur'){
+
+                    await collec.updateOne(
+                        { pseudo: attribution.pseudo },  // Remplacez par le critère de recherche (par ex. un ObjectId ou un autre identifiant unique)
+                        { $inc: { decouvert: 1 } } 
+                
+                )
+                    
+                    
+                }
+                else {
+            
+                    inc(attribution.pseudo,-0.5)
+                }
+           
+            }
+        }
+        else{
+         
+            inc(socket.pseudo,-1)
+           
+            if(attribution.pseudo!==socket.pseudo){
+            
+                inc(attribution.pseudo,0.5)
+            } 
         }
         count++
        
         if(count===8){
-           
-           let chacal =await collec.find({point:{$exists:true}}).sort({point:-1}).toArray()
+           let calmar=await collec.find({decouvert:{$exists:true}}).toArray()
+           let kraken=await collec.find({camp:{$exists:true}}).toArray()
+           await new Promise(async(resolve)=> {
+                for (const poulpe of calmar) {
+              
+                if(poulpe.decouvert<=1){
+                  
+                    await inc(poulpe.pseudo,2-(0.5*Number(poulpe.decouvert)))
+               
+                   }
 
+                   else{
+                    await inc(poulpe.pseudo,-Number(poulpe.decouvert))
+                   
+                   }
+                
+               };
+    
+                for (const poulpe of kraken) {
+              
+                if(poulpe.team===winner && poulpe.camp==='win'){
+                
+                    await inc(poulpe.pseudo,1)
+                
+                   }
+                   else if(poulpe.camp==='lose') {
+                    await inc(poulpe.pseudo,1)
+                   }
+                
+               };
+               resolve()
+           })
         
+         .then(async()=>{
+
+            let chacal =await collec.find({point:{$exists:true}}).sort({point:-1}).toArray()
+            
             io.emit('resultat',chacal)
+         })
+
         }
         
     })
+    socket.on('delu',async(opt,opt1,h)=>{
+       
+        let chasseur=await collec.findOne({ role:'serpentin',team:`T${h}`});
+        let hero=await collec.findOne({ role:'superhero',team:`T${h}`});
+   
+       if (chasseur!==null && chasseur!==undefined){
+        if (chasseur.pseudo===opt1){
+
+            inc(chasseur.pseudo,1)
+
+        }}
+        if(hero!==null && hero!==undefined){
+
+        
+        if (hero.pseudo===opt){
+ 
+            inc(hero.pseudo,1)
+        }}
+    })
+
     socket.on('savetab',(disco,t)=>{
         infosave(socket.pseudo,disco,t)
     })
 
     socket.on('clear',async()=>{
         
-       const execution= await collec.deleteMany({});
+        await collec.deleteMany({});
         T1.length=0
         T0.length=0
         
@@ -281,17 +371,30 @@ io.on('connection', (socket) => {
         mongouser('crap')
         await infosave('crap','function','testinglimit')
         chrono(0,socket)
-        console.log('chrono')
+       
     });
     socket.on('sendall2',async()=>{
-        stopTimer(socket)
+        clearTimeout(socket.trynda);
     })
 
   /*  socket.on('gros',()=>{
         console.log('gros')
         chrono(0,socket)
     })*/
-});
+   socket.on('arretmission',()=>{})
+   socket.on('gagnant',async()=>{
+    
+    let sakor = await collec.findOne({ pseudo: socket.pseudo });
+  
+    let kakor = await collec.find({ 'team':sakor.team}).toArray();
+   winner=sakor.team
+    kakor.forEach(element => {
+       
+        socket.gagnant=element.point+1
+        infosave(element.pseudo,'point',socket.gagnant)
+    });
+   })
+})
 
 async function testons() {
     let testing = await collec.findOne({ skip: 'trahison' });
@@ -308,12 +411,12 @@ async function pecor(socket) {
 }
 
 async function infosave(pseudo, prop, info) {
-    if (collec !== undefined) {
+    if (collec ) {
         await collec.updateOne({ pseudo: pseudo }, { $set: { [prop]: info } });
     }
 }
 async function infosaveid(id, prop, info) {
-    if (collec !== undefined) {
+    if (collec ) {
         await collec.updateOne({ id: id }, { $set: { [prop]: info } });
     }
 }
@@ -337,21 +440,21 @@ async function reco(socket, n) {
     if (decor.team !== undefined ) {
        
         socket.emit(decor.team)
+        global[decor.team][decor.position]=decor
       
     }
     if(decor.disco!==undefined){
 
         socket.emit('avance',decor.disco,'dab')
+        socket.emit('avance',decor.macro,'parametre')
+        socket.emit('avance',decor.validation,'validation')
 
     }// faut que je differncie quand c double face et quand c droide
-    if (decor.lapin!==undefined)
+    if (decor.lapin!==undefined){
         socket.emit('lelouch',decor.lapi,'listordre')
     let tempsrestant=decor.tn-decor.temps
     
-    console.log(tempsrestant+'tempsrestant')
-        globalThis[decor.role]([decor],socket,0,tempsrestant,decor.ordre[-1])
-    {
-
+        globalThis[decor.role]([decor],socket,0,tempsrestant,decor.ordre[-1],false)
     }
 }
 }
@@ -361,12 +464,14 @@ async function disconnecting(socket) {
 //s'il y a quelque chose il supprime
     if (supragrand !== null) {
         if (supragrand.team !== undefined ) {
+            delete global[supragrand.team][supragrand.position]
+            
            // global[supragrand.team].delete(socket.pseudo);
            if (lunch===false){
-            
-            delete supragrand.team
-           }
+         delete supragrand.team
+           
         }
+    }
 
         if (supragrand.role !== undefined && supragrand.role !== null) {
            // global[supragrand.role].delete(socket.pseudo);
@@ -386,8 +491,8 @@ async function disconnecting(socket) {
         });
     }
     
-    socket.emit('stomp')
-    console.log(socket.imparti)
+    socket.emit('stomp',false)
+  
     clearTimeout(socket.IDroide)
     infosave(socket.pseudo,'temps',socket.imparti)
        /* await new Promise((resolve)=>{
@@ -406,6 +511,7 @@ async function connt(socket,h) {
     
    //deja dans une equipe
     if (team!==null && team.team!==undefined) {
+       
         socket.emit('cringe', true, socket.pseudo);
     }
     //trouve pas de team 
@@ -436,8 +542,8 @@ async function soitajour(socket) {
 }
 
 async function t12(socket, h) {
-    let pog = await collec.findOne({ pseudo: 'biencommun1' });
-    if (collec.findOne({pseudo:socket.pseudo})!==null){
+    let pog = await collec.findOne({ pseudo: `biencommun${h}` });
+    if (collec.findOne({pseudo:socket.pseudo})!==null && pog!==null){
     socket.emit('rej', socket.pseudo, pog.t);
     infosave(socket.pseudo, 'team', `T${h}`);
    // global[mace].add(socket.pseudo);
@@ -455,97 +561,142 @@ async function hoho(){
 
 global.tabaudio0 = '';
 global.tabaudio1 = '';
-global.doubleface0=['tu dois gagner','tu dois perdre']
-global.doubleface1=['tu dois gagner','tu dois perdre']
+let doublefuck=['tu dois gagner','tu dois perdre']
+
 global.IDroide0=''
 global.IDroide1=''
 let stop=true
+let mv=''
 global.Idouble0=''
 global.Idouble1=''
 
 
-globalThis.doubleface=async function doubleface(facy,socket,k){
+globalThis.doubleface=async function doubleface(facy,socket,k,tr,ordre){
   
-    let timer2=await (Math.floor(Math.random() * 4.99)+1)*30000
-    let choisi = Math.floor(Math.random() * ((global[`doubleface${k}`].length)+0.99));
-    let nv = global[`doubleface${k}`][choisi]
-    
-        collec.updateOne({pseudo:facy[k].pseudo}, {$push: { ordre: nv} });
-        //ecrire l ordre plus dit l ordre  
-        if (facy[k].pseudo!==socket.pseudo){
-        //socket.to(facy[k].pseudo).emit('mele',nv)
-        
-        }
-        else{
-          //  socket.emit('mele',nv)
-        }
-       
-        global[`Idouble${k}`]=setTimeout(()=>doubleface(facy,socket,k), timer2);
-    }
-    
-
-
-  /*  function stopTimer(socket) {
-        clearTimeout(socket.trynda);
-        console.log('timerstopper')
-      //  socket.emit('tictac',true)
+    if(socket.pseudo!==facy[k].pseudo){
       
-      }*/  
-
-function chrono(k,socket){
-   
-    socket.imparti+=k
-    console.log(socket.imparti)
-    socket.emit('rep',true)
-    socket.trynda=setTimeout(() => {
-        chrono(2000,socket)
-}, 1000);
-}
-globalThis.droide=async function droide(lebadre,socket,k,tr,ordre){
-    //arrete le chronometre quand sotp false cad quand on appuie sur arreter 
-    if(socket.pseudo!==lebadre[k].pseudo){
-        console.log('voici le nom en questio'+lebadre[k].pseudo)
-        socket.to(lebadre[k].id).emit('stomp')
+        socket.to(facy[k].id).emit('stomp',true)
         }
         else{
-            socket.emit('stomp')
+            
+            socket.emit('stomp',true)
         }
-       
+
         
     if (stop===true){
    
      if (tr!==0){
-        console.log(tr)
-        console.log('tr est different de 0')
+    
         socket.emit('gros')
-        infosave(lebadre[k].pseudo,'tn',tr)
+        infosave(facy[k].pseudo,'tn',tr)
         await setTimeout(()=>{
-            droide(lebadre,socket,k,0,ordre)}, tr);
+            doubleface(facy,socket,k,0,ordre,false)}, tr);
         
      }
        else{ 
         if(ordre===null || ordre===undefined){
-            var timer=await (Math.floor((Math.random() * 4.99))+1)*30000
+            var timer2=await (Math.floor((Math.random() * 4.99))+1)*10000
+               
+                let choisi = Math.floor(Math.random() * (doublefuck.length)-0,1);
+            
+                mv = doublefuck[choisi];
+            
+             
+                
+            
+       
+        infosave(facy[k].pseudo,'tn',timer2)
+        collec.updateOne({pseudo:facy[k].pseudo}, {$push: { ordre: mv} });
+        }
+        
+        else {
+          
+            mv=ordre
+            
+        }
+    }
+        
+        if (facy[k].pseudo!==socket.pseudo){
+        
+        socket.to(facy[k].id).emit('mele',mv.toString(),Number(timer2))
+        socket.to(facy[k].id).emit('gros')
+        
+        
+        }
+        else{
+            socket.emit('mele',mv.toString(),Number(timer2))
+            socket.emit('gros')
+           
+        }
+    } 
+    if (mv==='tu dois gagner'){
+        infosave(facy.pseudo,'camp','win')
+    }
+    else{
+        infosave(facy.pseudo,'camp','lose')
+    }
+        global[`Idouble${k}`]=setTimeout(()=>doubleface(facy,socket,k,0,null),timer2);
+    }
     
-        let choisi = Math.floor(Math.random() * (global[`tabaudio${k}`].length-0,1));
-        console.log(timer)
-        console.log('tttttttttttttttttttttttttttt')
-        var mv = global[`tabaudio${k}`].splice(choisi, 1);
+globalThis.droide=async function droide(lebadre,socket,k,tr,ordre,first){
+   console.log("droide")
+    //arrete le chronometre quand sotp false cad quand on appuie sur arreter 
+    //quand le mec re rentre avec
+    if(socket.pseudo!==lebadre[k].pseudo){
+       
+        socket.to(lebadre[k].id).emit('stomp',true)
+        }
+        else{
+        
+            socket.emit('stomp',true)
+        }
+
+        
+    if (stop===true){
+   
+     if (tr!==0){
+     
+        socket.emit('gros')
+        infosave(lebadre[k].pseudo,'tn',tr)
+        await setTimeout(()=>{
+            droide(lebadre,socket,k,0,ordre,false)}, tr);
+        
+     }
+       else{ 
+        if(ordre===null || ordre===undefined){
+            var timer=await (Math.floor((Math.random() * 4.99   ))+1)*10000
+         
+            if (first===false){
+                mv='pick un champion aleatoire.mp3'
+                while(mv==='pick un champion aleatoire.mp3' || mv==='tu dois gagner.mp3' || mv==='tu dois perdre.mp3'){
+              
+                let choisi = Math.floor(Math.random() * (global[`tabaudio${k}`].length)-0,1);
+               
+                mv = global[`tabaudio${k}`].splice(choisi, 1).toString();
+              
+                }
+            }
+       
+        else{
+         
+           mv='pick un champion aleatoire'
+        }
+
         infosave(lebadre[k].pseudo,'tn',timer)
         collec.updateOne({pseudo:lebadre[k].pseudo}, {$push: { ordre: mv} });
 
         } 
         else {
-            var mv=ordre
+           
+            mv=ordre
             
         }
         
         if (lebadre[k].pseudo!==socket.pseudo){
-           console.log(mv)
+    
         socket.to(lebadre[k].id).emit('mele',mv.toString())
         socket.to(lebadre[k].id).emit('gros')
         
-
         
         }
         else{
@@ -553,8 +704,9 @@ globalThis.droide=async function droide(lebadre,socket,k,tr,ordre){
             socket.emit('gros')
            
         }
-        socket.IDroide=setTimeout(()=>
-            droide(lebadre,socket,k,0,null), timer);
+        global[`IDroide${k}`]=setTimeout(()=>{
+            droide(lebadre,socket,k,0,null,false)
+        console.log('prochaine ordre')}, timer);
 
     } 
 }
@@ -562,56 +714,108 @@ globalThis.droide=async function droide(lebadre,socket,k,tr,ordre){
 }
 
 async function droideaudio(shop,socket) {
-  
+   console.log("droideaudio")
 
     if(shop===false){
         stop=false
         clearTimeout(IDroide0)
         clearTimeout(IDroide1)
-        clearTimeout(socket.IDroide)
         clearTimeout(Idouble0)
         clearTimeout(Idouble1)
 
     }
     else{
-  
+        let lebadre=await collec.find({'role':'droide'}).toArray()
+        let facy=await collec.find({'role':'doubleface'}).toArray()
+        let romeo=await collec.find({'role':'romeo'}).toArray()
    
-    let lebadre=await collec.find({'role':'droide'}).toArray()
-    let facy=await collec.find({'role':'doubleface'}).toArray()
-    let romeo=await collec.find({'role':'romeo'}).toArray()
-    
-    
-    
  //execution immediat
- if(facy!==null ){
  
- 
-    doubleface(facy,socket,1)
-    doubleface(facy,socket,0)
- }
- if(lebadre!==null ){
-    droide(lebadre,socket,1,0)
-    droide(lebadre,socket,0,0)
 
- }
- if(romeo!==null && romeo.pseudo!==undefined){
-    for(let k=0;k<2;k++){
-        let juliette=await collec.find({'team':romeo[k].team}).toArray()
-        let jul=Math.floor(Math.random() * 4.99)
-        socket.to(romeo[k].pseudo).emit('mele',`voici ta juliette ${juliette[jul].pseudo} j'espère que tu heureux que ce soit cette personne`)
-        
+
+ if(facy!==null && facy!==undefined && facy.length!==0 ){
+    if(facy[1]!==undefined){
+        doubleface(facy,socket,1,0,null)
     }
-    
- } 
-}
-    
-}
+   if(facy[0]!==undefined){
+    doubleface(facy,socket,0,0,null)
+   }
+ }
 
+if(lebadre!==null && lebadre!==undefined&&lebadre.length!==0){
+
+
+
+    for(let k=0;k<2;k++){
+        if( lebadre[k]!==undefined){
+        let pf=Math.floor((Math.random() * 1.99))
+        let yuk=[true,false]
+        
+        if(yuk[pf]===true){
+            droide(lebadre,socket,k,0,null,yuk[pf])
+        }
+        else{
+            let  timer=await (Math.floor((Math.random() * 4.99))+1)*10000
+            console.log(timer)
+            setTimeout(()=> droide(lebadre,socket,k,0,null,yuk[pf]),timer)
+        }
+       
+    }}
+}
+ 
+
+ if(romeo!==null && romeo!==undefined && romeo.length!==0 ){
+    for(let k=0;k<2;k++){
+        if (romeo[k]!==undefined){
+       
+        if(romeo[k].team==='T1'){
+            let juliette=await collec.find({'team':'T0'}).toArray()
+           
+            let jul=Math.floor(Math.random() * 1.99)
+            
+            let niquetarace=juliette[jul].pseudo
+            if(socket.pseudo!==romeo[k].pseudo){
+              
+                socket.to(romeo[k].id).emit('mele',`voici ta juliette ${niquetarace} j'espère que tu heureux que ce soit cette personne`,false,true)
+                }    
+        
+            else{
+                socket.emit('mele',`voici ta juliette ${niquetarace} j'espère que tu heureux que ce soit cette personne`,false,true)
+            }
+    }
+        else if(romeo[k].team==='T0'){
+            let juliette=await collec.find({'team':'T1'}).toArray()
+            let jul=Math.floor(Math.random() * 1.99)
+            let niquetarace=juliette[jul].pseudo
+            if(romeo[k].pseudo!==socket.pseudo){
+              
+            socket.to(romeo[k].id).emit('mele',`voici ta juliette ${niquetarace} j'espère que tu heureux que ce soit cette personne`,false,true)
+            }
+            else{
+               
+                socket.emit('mele',`voici ta juliette ${niquetarace} j'espère que tu heureux que ce soit cette personne`,false,true)
+            }
+        }
+    
+    }    
+  } 
+ }
+}
+} 
+
+    
+
+async function inc(l,n) {
+    await collec.updateOne(
+        { pseudo: l },  // Remplacez par le critère de recherche (par ex. un ObjectId ou un autre identifiant unique)
+        { $inc: { point: n } } 
+
+)}
 globalThis.testinglimit=function testinglimit(){
     console.log('yo connard')
     }
     
 
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000 ;
 server.listen(PORT, () => {});
