@@ -169,12 +169,12 @@ io.on('connection', (socket) => {
         lunch = t;
         ;//['imposteur'] ,'serpentin', 'romeo','superhero'
         //pour les deux teams
-        for (let b = 0; b < 2; b++) {
+        for (let b = 0; b < 5; b++) {
             let identity = ['doubleface','droide','serpentin', 'romeo','superhero' ];
             let ni = ['imposteur']
             let k = 0;
             //modifiable
-            for(let m=0;m<2;m++) {
+            for(let m=0;m<5;m++) {
                 let choix = Math.floor((Math.random() * identity.length)-0,1);
                 let nv = identity.splice(choix, 1);
                 ni.push(nv[0]);
